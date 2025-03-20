@@ -1,0 +1,41 @@
+services:
+  db:
+    image: &db-image postgres:17.4
+    restart: unless-stopped
+    container_name: tiny_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - tiny_db_net
+    healthcheck:
+      test: pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  db_test:
+    image: *db-image
+    restart: unless-stopped
+    container_name: tiny_db_test
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: "test"
+      POSTGRES_PASSWORD: "test"
+      POSTGRES_DB: "test"
+    networks:
+      - tiny_db_net
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  tiny_db_net:
+    driver: bridge

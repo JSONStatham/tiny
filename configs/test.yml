@@ -1,0 +1,14 @@
+app_name: "tiny"
+env: "local"
+debug: true
+alias_length: 6
+http_server:
+  address: "localhost:8080" 
+  timeout: 4s
+  idle_timeout: 30s
+db:
+  host: "localhost"
+  port: "5433"
+  user: "test"
+  password: "test"
+  name: "test"

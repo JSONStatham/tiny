@@ -1,0 +1,63 @@
+version: '3'
+
+vars:
+  DOCKER_COMPOSE: "docker compose"
+  CONTAINER_DB: "db"
+  DB_URL: "postgresql://$DB_USERNAME:$DB_PASSWORD@localhost:5432/$DB_DATABASE?sslmode=disable"
+
+dotenv: ['.env', '{{.ENV}}/.env', '{{.HOME}}/.env']  
+
+tasks:
+  build:
+    cmds:
+      - go build ./cmd/main.go
+
+  up:
+    preconditions:
+      - test -f docker-compose.yml
+    cmds:
+      - docker compose up -d
+
+  down:
+    cmds:
+      - docker compose down
+
+  build-docker:
+    cmds:
+      - docker compose up -d --build
+
+  restart:
+    cmds:
+      - docker compose restart
+
+  down-volumes:
+    cmds:
+      - docker compose down --volumes
+
+  migrate_version:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" version
+    silent: true      
+
+  migrate_reset:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" force 1
+    silent: true      
+
+  migrate_up:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" -verbose up
+    silent: true
+
+  migrate_down:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" -verbose down
+    silent: true      
+
+  db_seed:
+    cmds:
+      - echo "TODO"
+
+  swag:
+    cmds:
+      - swag init -g cmd/tiny/main.go
