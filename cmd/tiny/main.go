@@ -66,6 +66,10 @@ func main() {
 	router.Use(logger.New(log))
 	router.Use(middleware.URLFormat)
 
+	router.Get("/up", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	basicAuth := middleware.BasicAuth("tiny", map[string]string{
 		cfg.HttpServer.User: cfg.HttpServer.Password,
 	})
@@ -96,14 +100,14 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
+		log.Info("server started", slog.String("address", cfg.HttpServer.Address))
+
 		if err := server.ListenAndServe(); err != nil {
 			log.Error("failed to start server", logger.Err(err))
 		}
 	}()
 
 	<-done
-
-	log.Info("server started", slog.String("address", cfg.HttpServer.Address))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

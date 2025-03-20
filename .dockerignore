@@ -1,3 +1,6 @@
 logs
-tmp
 .air*
+**/tmp/
+build/
+.cache/
+.DS_Store

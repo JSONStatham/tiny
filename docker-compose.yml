@@ -1,4 +1,23 @@
 services:
+  app:
+    build:
+      context: ./
+      dockerfile: docker/go/Dockerfile
+    container_name: tiny_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - tiny_db_net
+    healthcheck:
+      test: curl -s http://localhost:8080/up >/dev/null || exit 1
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
   db:
     image: &db-image postgres:17.4
     restart: unless-stopped
@@ -39,3 +58,4 @@ volumes:
 networks:
   tiny_db_net:
     driver: bridge
+    name: tiny_db_net

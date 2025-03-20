@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	AppName     string     `yaml:"app_name" env-required:"true"`
-	Env         string     `yaml:"env" env-required:"true"`
+	Env         string     `yaml:"env" env-required:"true" env-default:"prod"`
 	Debug       bool       `yaml:"debug" env-default:"false"`
 	AliasLength int        `yaml:"alias_length"`
 	HttpServer  HttpServer `yaml:"http_server"`
