@@ -29,7 +29,7 @@ jobs:
         with:
           context: .
           file: docker/go/Dockerfile 
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ vars.DOCKER_USERNAME }}/tiny-url:latest
 
@@ -37,11 +37,11 @@ jobs:
     needs: build
     runs-on: self-hosted
     env:
-      DEPLOY_DIR: /home/ec2-user/app
-      CONFIG_PATH: /home/ec2-user/app/config/prod.yml
+      DEPLOY_DIR: /app
+      CONFIG_PATH: /app/config/prod.yml
     steps:
-      - name: Create app directory if not exists
-        run: mkdir -p /home/ec2-user/app
+      # - name: Create app directory if not exists
+      #   run: mkdir -p /home/ec2-user/app
 
       - name: Create .env from Secret
         run: echo "${{ secrets.ENV_FILE }}" > /home/ec2-user/app/.env
@@ -49,19 +49,20 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          ref: ${{ github.event.inputs.tag }}
+          path: /app
 
-      - name: Pull Docker image
+      - name: Pull latest image
         run: docker pull ${{ vars.DOCKER_USERNAME }}/tiny-url:latest
 
-      - name: Stop and Remove Old Containers
-        run: docker compose -f ${{ env.DEPLOY_DIR }}/docker-compose.yml down
+      - name: Stop running containers
+        working-directory: /app
+        run: docker compose down
 
-      - name: Start Services with Docker Compose
-        run: docker compose -f ${{ env.DEPLOY_DIR }}/docker-compose.yml up -d --force-recreate --remove-orphans
+      - name: Start services
+        working-directory: /app
+        run: docker compose up -d --force-recreate --remove-orphans
 
+      - name: Clean up unused images
+        run: docker image prune -f
