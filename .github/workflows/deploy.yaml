@@ -1,11 +1,9 @@
 name: Deploy App
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to deploy'
-        required: true
+  push:
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -15,14 +13,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag }}
-
-      - name: Check if tag exists
-        run: |
-          git fetch --all --tags
-          if ! git tag | grep -q "^${{ github.event.inputs.tag }}$"; then
-            echo "error: Tag '${{ github.event.inputs.tag }}' not found"
-            exit 1
-          fi
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -50,7 +40,9 @@ jobs:
       CONFIG_PATH: /home/ec2-user/app/config/prod.yml
     steps:
       - name: Create .env from Secret
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        run: |
+          mkdir -p ${{ env.DEPLOY_DIR }}
+          echo "${{ secrets.ENV_FILE }}" > ${{ env.DEPLOY_DIR }}/.env
         working-directory: ${{ env.DEPLOY_DIR }}
 
       - name: Pull Docker image
