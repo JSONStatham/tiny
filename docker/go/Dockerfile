@@ -1,4 +1,7 @@
-FROM golang:1.24
+FROM golang:1.24-alpine
+
+# Install curl
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
@@ -9,6 +12,6 @@ COPY . .
 RUN go build -v -o /app/bin/tiny ./cmd/tiny/main.go
 
 
-EXPOSE 8080
+EXPOSE 80
 
 CMD ["/app/bin/tiny"]
