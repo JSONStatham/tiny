@@ -39,10 +39,11 @@ jobs:
       DEPLOY_DIR: /home/ec2-user/app
       CONFIG_PATH: /home/ec2-user/app/config/prod.yml
     steps:
+      - name: Create app directory if not exists
+        run: mkdir -p /home/ec2-user/app
+
       - name: Create .env from Secret
-        run: |
-          mkdir -p ${{ env.DEPLOY_DIR }}
-          echo "${{ secrets.ENV_FILE }}" > ${{ env.DEPLOY_DIR }}/.env
+        run: echo "${{ secrets.ENV_FILE }}" > /home/ec2-user/app/.env
         working-directory: ${{ env.DEPLOY_DIR }}
 
       - name: Pull Docker image
