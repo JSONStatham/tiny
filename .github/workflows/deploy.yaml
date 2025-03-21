@@ -24,10 +24,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create .env from Secret
-        run: echo "${{ secrets.ENV_FILE }}" > .env
-        working-directory: ${{ env.DEPLOY_DIR }}
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -42,15 +38,19 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
+          tags: ${{ vars.DOCKER_USERNAME }}/tiny-url:latest
 
   deploy:
+    needs: build
+    runs-on: self-hosted
     env:
       DEPLOY_DIR: /home/ec2-user/app
       CONFIG_PATH: /home/ec2-user/app/config/prod.yml
-    needs: build
-    runs-on: self-hosted
     steps:
+      - name: Create .env from Secret
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+        working-directory: ${{ env.DEPLOY_DIR }}
+
       - name: Pull Docker image
         run: docker pull ${{ vars.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
 
