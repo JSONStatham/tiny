@@ -1,6 +1,7 @@
 name: Deploy App
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -46,12 +47,21 @@ jobs:
         run: echo "${{ secrets.ENV_FILE }}" > /home/ec2-user/app/.env
         working-directory: ${{ env.DEPLOY_DIR }}
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Pull Docker image
-        run: docker pull ${{ vars.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
+        run: docker pull ${{ vars.DOCKER_USERNAME }}/tiny-url:latest
 
       - name: Stop and Remove Old Containers
-        run: docker compose down
+        run: docker compose -f ${{ env.DEPLOY_DIR }}/docker-compose.yml down
 
       - name: Start Services with Docker Compose
-        run: docker compose up -d --force-recreate --remove-orphans
+        run: docker compose -f ${{ env.DEPLOY_DIR }}/docker-compose.yml up -d --force-recreate --remove-orphans
 
