@@ -12,7 +12,7 @@ dotenv: ['.env', '{{.ENV}}/.env', '{{.HOME}}/.env']
 tasks:
   build:
     cmds:
-      - go build ./{{.CMD}}
+      - go build -o bin/tiny ./{{.CMD}}
 
   up:
     preconditions:

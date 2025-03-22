@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 	"tiny/internal/config"
@@ -123,10 +121,6 @@ func main() {
 func setupLogger(cfg config.Config) *slog.Logger {
 	var logger *slog.Logger
 
-	logDir := os.Getenv("LOG_DIR")
-	logName := fmt.Sprintf("app-%s.log", time.Now().Format("2006-01-02"))
-	logPath := filepath.Join(logDir, logName)
-
 	switch cfg.Env {
 	case envLocal:
 		logger = setupPrettyLogger()
@@ -135,13 +129,8 @@ func setupLogger(cfg config.Config) *slog.Logger {
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		)
 	case envProd:
-		logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("Failed to open log file: %v", err)
-		}
-
 		logger = slog.New(
-			slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo}),
+			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
 		)
 	}
 

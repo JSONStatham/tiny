@@ -1,8 +1,9 @@
-logs
+logs/
 .air*
 **/tmp/
 build/
 .cache/
 .DS_Store
-.git
-.github
+.git/
+.github/
+bin/
