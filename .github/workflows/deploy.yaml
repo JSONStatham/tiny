@@ -37,32 +37,35 @@ jobs:
     needs: build
     runs-on: self-hosted
     env:
-      DEPLOY_DIR: /app
-      CONFIG_PATH: /app/config/prod.yml
+      DEPLOY_DIR: /home/ec2-user/app
     steps:
-      # - name: Create app directory if not exists
-      #   run: mkdir -p /home/ec2-user/app
-
-      - name: Create .env from Secret
-        run: echo "${{ secrets.ENV_FILE }}" > /home/ec2-user/app/.env
-        working-directory: ${{ env.DEPLOY_DIR }}
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag }}
-          path: /app
+
+      - name: Ensure deploy directory exists and sync files
+        run: |
+          mkdir -p $DEPLOY_DIR
+          rsync -a --delete --exclude=".env" $GITHUB_WORKSPACE/ $DEPLOY_DIR/
+
+      - name: Create .env if not exists
+        run: |
+          if [ ! -f "$DEPLOY_DIR/.env" ]; then
+            echo "${{ secrets.ENV_FILE }}" > $DEPLOY_DIR/.env
+          fi
 
       - name: Pull latest image
         run: docker pull ${{ vars.DOCKER_USERNAME }}/tiny-url:latest
 
       - name: Stop running containers
-        working-directory: /app
+        working-directory: ${{ env.DEPLOY_DIR }}
         run: docker compose down
 
       - name: Start services
-        working-directory: /app
+        working-directory: ${{ env.DEPLOY_DIR }}
         run: docker compose up -d --force-recreate --remove-orphans
 
       - name: Clean up unused images
         run: docker image prune -f
+
