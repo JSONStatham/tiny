@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	ssogrpc "tiny/internal/clients/sso/grpc"
 	"tiny/internal/config"
 	urlhandler "tiny/internal/http-server/handlers"
 	"tiny/internal/storage/postgres"
@@ -48,6 +49,18 @@ func main() {
 	log := setupLogger(cfg)
 
 	log.Info("Init storage")
+
+	ssoClient, err := ssogrpc.New(
+		context.Background(),
+		log,
+		cfg.Clients.SSO.Address,
+		cfg.Clients.SSO.Timeout,
+		cfg.Clients.SSO.RetriesCount,
+	)
+	if err != nil {
+		log.Error("failed to init sso client", logger.Err(err))
+		os.Exit(1)
+	}
 
 	storage, err := postgres.New(cfg, log)
 	if err != nil {

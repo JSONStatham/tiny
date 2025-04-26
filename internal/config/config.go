@@ -9,12 +9,14 @@ import (
 )
 
 type Config struct {
-	AppName     string     `yaml:"app_name" env-required:"true"`
-	Env         string     `yaml:"env" env-required:"true" env-default:"prod"`
-	Debug       bool       `yaml:"debug" env-default:"false"`
-	AliasLength int        `yaml:"alias_length"`
-	HttpServer  HttpServer `yaml:"http_server"`
-	DB          DB         `yaml:"db"`
+	AppName     string        `yaml:"app_name" env-required:"true"`
+	Env         string        `yaml:"env" env-required:"true" env-default:"prod"`
+	Debug       bool          `yaml:"debug" env-default:"false"`
+	AliasLength int           `yaml:"alias_length"`
+	HttpServer  HttpServer    `yaml:"http_server"`
+	DB          DB            `yaml:"db"`
+	Clients     ClientsConfig `yaml:"clients"`
+	AppSecret   string        `yaml:"app_secret" env-required:"true" env:"APP_SECRET"`
 }
 
 type HttpServer struct {
@@ -31,6 +33,16 @@ type DB struct {
 	Name     string `yaml:"name" env:"DB_DATABASE"`
 	User     string `yaml:"user" env:"DB_USERNAME"`
 	Password string `yaml:"password" env:"DB_PASSWORD"`
+}
+
+type ClientsConfig struct {
+	SSO Client `yaml:"sso"`
+}
+
+type Client struct {
+	Address      string        `yaml:"address"`
+	Timeout      time.Duration `yaml:"timeout"`
+	RetriesCount uint          `yaml:"retries_count"`
 }
 
 func MustLoad() Config {
