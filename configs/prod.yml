@@ -3,12 +3,12 @@ env: "prod"
 debug: false
 alias_length: 6
 http_server:
-  address: "0.0.0.0:80" 
+  address: "0.0.0.0:80"
   timeout: 4s
   idle_timeout: 4s
 db:
   host: ${DB_HOST}
   port: ${DB_PORT}
-  user: ${DB_USERNAME}
+  user: ${DB_USER}
   password: ${DB_PASSWORD}
   name: ${DB_DATABASE}

@@ -1,4 +1,4 @@
-package urlhandler_test
+package handlers_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 	"tiny/internal/config"
-	urlhandler "tiny/internal/http-server/handlers"
+	"tiny/internal/handlers"
 	"tiny/internal/http-server/handlers/mocks"
 	"tiny/internal/models"
 	"tiny/internal/storage"
@@ -87,7 +87,7 @@ func TestSaveURL(t *testing.T) {
 			}
 
 			// Create handler
-			handler := urlhandler.SaveURL(config.Config{}, slogdiscard.NewDiscardLogger(), mockStorage)
+			handler := handlers.SaveURL(config.Config{}, slogdiscard.NewDiscardLogger(), mockStorage)
 
 			// Format request body
 			input := fmt.Sprintf(`{"url": "%s", "alias": "%s"}`, tt.url, tt.alias)

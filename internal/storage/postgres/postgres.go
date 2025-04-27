@@ -2,29 +2,28 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"tiny/internal/config"
 	"tiny/internal/models"
 	"tiny/internal/storage"
 
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 type Storage struct {
-	cfg config.Config
-	log *slog.Logger
-	DB  *pgxpool.Pool
+	cfg *config.Config
+	DB  *sqlx.DB
 }
 
-func New(cfg config.Config, log *slog.Logger) (*Storage, error) {
+func New(cfg *config.Config) (*Storage, error) {
 	const op = "storage.postgres.New"
 
-	dbURL := fmt.Sprintf(
+	dns := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s",
 		cfg.DB.User,
 		cfg.DB.Password,
@@ -32,51 +31,57 @@ func New(cfg config.Config, log *slog.Logger) (*Storage, error) {
 		cfg.DB.Port,
 		cfg.DB.Name,
 	)
-	db, err := pgxpool.New(context.Background(), dbURL)
+	db, err := sqlx.Connect("pgx", dns)
 	if err != nil {
-		return nil, fmt.Errorf("%s:%w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &Storage{cfg, log, db}, nil
+	return &Storage{cfg, db}, nil
 }
 
 func (s Storage) GetURL(alias string) (*models.URL, error) {
 	const op = "storage.postgres.GetURL"
-	var url models.URL
 
-	args := pgx.NamedArgs{"alias": alias}
-	query := "SELECT id, url, alias, created_at FROM url WHERE alias=@alias LIMIT 1"
-	err := s.DB.QueryRow(context.Background(), query, args).Scan(&url.ID, &url.URL, &url.Alias, &url.CreatedAt)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr == pgx.ErrNoRows {
+	query := "SELECT id, url, alias, created_at FROM url WHERE alias=$1 LIMIT 1"
+
+	url := &models.URL{}
+	if err := s.DB.Get(url, query, alias); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrURLNotFound
 		}
-
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &url, nil
+	return url, nil
+}
+
+func (s Storage) FetchAll(ctx context.Context) ([]*models.URL, error) {
+	const op = "storage.postgres.GetURL"
+
+	query := "SELECT id, url, alias, created_at FROM url"
+
+	var urls []*models.URL
+	if err := s.DB.SelectContext(ctx, &urls, query); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.ErrURLNotFound
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return urls, nil
 }
 
 func (s Storage) SaveURL(urlToSave, alias string) error {
 	const op = "storage.postgres.SaveURL"
 
-	query := "INSERT INTO url (url, alias) VALUES (@url, @alias)"
-	args := pgx.NamedArgs{
-		"url":   urlToSave,
-		"alias": alias,
-	}
+	query := "INSERT INTO url (url, alias) VALUES ($1, $2)"
 
-	_, err := s.DB.Exec(context.Background(), query, args)
-	fmt.Println(err)
+	_, err := s.DB.Exec(query, urlToSave, alias)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		fmt.Println("MY ERROR:", pgErr)
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		if errors.As(err, &pgErr) && pgErr.SQLState() == pgerrcode.UniqueViolation {
 			return fmt.Errorf("%s: %w", op, storage.ErrURLExists)
 		}
-
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -86,12 +91,19 @@ func (s Storage) SaveURL(urlToSave, alias string) error {
 func (s Storage) DeleteURL(alias string) error {
 	const op = "storage.postgres.DeleteURL"
 
-	res, err := s.DB.Exec(context.Background(), "DELETE FROM url WHERE alias=@alias", pgx.NamedArgs{"alias": alias})
+	query := "DELETE FROM url WHERE alias=$1"
+
+	res, err := s.DB.ExecContext(context.Background(), query, alias)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if res.RowsAffected() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: failed to get rows affected: %w", op, err)
+	}
+
+	if rowsAffected == 0 {
 		return storage.ErrURLNotFound
 	}
 

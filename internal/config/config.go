@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -29,35 +30,48 @@ type DB struct {
 	Host     string `yaml:"host" env:"DB_HOST"`
 	Port     string `yaml:"port" env:"DB_PORT"`
 	Name     string `yaml:"name" env:"DB_DATABASE"`
-	User     string `yaml:"user" env:"DB_USERNAME"`
+	User     string `yaml:"user" env:"DB_USER"`
 	Password string `yaml:"password" env:"DB_PASSWORD"`
 }
 
-func MustLoad() Config {
-	var cfg Config
+const (
+	flagConfigPathName = "config"
+	envConfigPathName  = "CONFIG_PATH"
+)
 
-	cfgPath := fetchConfigPath()
-	if _, err := os.Stat(cfgPath); err != nil {
-		panic("error opening config file")
-	}
-
-	err := cleanenv.ReadConfig(cfgPath, &cfg)
+func init() {
+	err := godotenv.Load()
 	if err != nil {
-		panic("Failed to read config")
+		panic("Error loading .env file")
+	}
+}
+
+func MustLoad() *Config {
+	cfgPath := fetchConfigPath()
+	if cfgPath == "" {
+		panic("config path is empty")
 	}
 
-	return cfg
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		panic("config file not found: " + cfgPath)
+	}
+
+	config := &Config{}
+	if err := cleanenv.ReadConfig(cfgPath, config); err != nil {
+		panic("failed to read config: " + err.Error())
+	}
+
+	return config
 }
 
 func fetchConfigPath() string {
-	var res string
-
-	flag.StringVar(&res, "config_path", "", "path to config file")
+	var path string
+	flag.StringVar(&path, flagConfigPathName, "", "path ot config file")
 	flag.Parse()
 
-	if res == "" {
-		res = os.Getenv("CONFIG_PATH")
+	if path == "" {
+		path = os.Getenv(envConfigPathName)
 	}
 
-	return res
+	return path
 }

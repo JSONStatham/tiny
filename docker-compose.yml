@@ -1,22 +1,22 @@
 services:
-  app:
-    build:
-      context: ./
-      dockerfile: docker/go/Dockerfile
-    container_name: tiny_app
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - tiny_db_net
-    healthcheck:
-      test: curl -s http://localhost:80/up >/dev/null || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # app:
+  #   build:
+  #     context: ./
+  #     dockerfile: docker/go/Dockerfile
+  #   container_name: tiny_app
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   networks:
+  #     - tiny_db_net
+  #   healthcheck:
+  #     test: curl -s http://localhost:80/up >/dev/null || exit 1
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
   db:
     image: &db-image postgres:17.4
@@ -25,7 +25,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
     volumes:
@@ -33,23 +33,23 @@ services:
     networks:
       - tiny_db_net
     healthcheck:
-      test: pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}
+      test: pg_isready -U ${DB_USER} -d ${DB_DATABASE}
       interval: 5s
       timeout: 10s
       retries: 20
 
-  db_test:
-    image: *db-image
-    restart: unless-stopped
-    container_name: tiny_db_test
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: "test"
-      POSTGRES_PASSWORD: "test"
-      POSTGRES_DB: "test"
-    networks:
-      - tiny_db_net
+  # db_test:
+  #   image: *db-image
+  #   restart: unless-stopped
+  #   container_name: tiny_db_test
+  #   ports:
+  #     - "5433:5432"
+  #   environment:
+  #     POSTGRES_USER: "test"
+  #     POSTGRES_PASSWORD: "test"
+  #     POSTGRES_DB: "test"
+  #   networks:
+  #     - tiny_db_net
 
 volumes:
   db_data:

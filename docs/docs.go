@@ -66,6 +66,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/url/all": {
+            "get": {
+                "description": "get urls",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "URL"
+                ],
+                "summary": "Get All URLs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/urlhandler.UrlList"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/url/{alias}": {
             "get": {
                 "description": "get url string by alias",
@@ -244,6 +273,18 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "urlhandler.UrlList": {
+            "type": "object",
+            "properties": {
+                "urls": {
+                    "description": "TotalCount uint64        ` + "`" + `json:\"total_count\"` + "`" + `\nTotalPages uint64        ` + "`" + `json:\"total_pages\"` + "`" + `\nPage       uint64        ` + "`" + `json:\"page\"` + "`" + `\nSize       uint64        ` + "`" + `json:\"size\"` + "`" + `",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.URL"
+                    }
                 }
             }
         }

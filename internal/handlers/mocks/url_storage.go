@@ -3,6 +3,7 @@
 package mocks
 
 import (
+	context "context"
 	models "tiny/internal/models"
 
 	mock "github.com/stretchr/testify/mock"
@@ -29,6 +30,36 @@ func (_m *URLStorage) DeleteURL(alias string) error {
 	}
 
 	return r0
+}
+
+// FetchAll provides a mock function with given fields: ctx
+func (_m *URLStorage) FetchAll(ctx context.Context) ([]*models.URL, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchAll")
+	}
+
+	var r0 []*models.URL
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*models.URL, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*models.URL); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.URL)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetURL provides a mock function with given fields: alias

@@ -1,13 +1,13 @@
-version: '3'
+version: "3"
 
 vars:
   DOCKER_COMPOSE: "docker compose"
   CONTAINER_DB: "db"
   CONTAINER_APP: "app"
-  DB_URL: "postgresql://$DB_USERNAME:$DB_PASSWORD@localhost:5432/$DB_DATABASE?sslmode=disable"
+  DB_URL: "postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_DATABASE?sslmode=disable"
   CMD: "cmd/tiny/main.go"
 
-dotenv: ['.env', '{{.ENV}}/.env', '{{.HOME}}/.env']  
+dotenv: [".env", "{{.ENV}}/.env", "{{.HOME}}/.env"]
 
 tasks:
   build:
@@ -39,12 +39,12 @@ tasks:
   migrate_version:
     cmds:
       - migrate -path migrations -database "{{.DB_URL}}" version
-    silent: true      
+    silent: true
 
   migrate_reset:
     cmds:
       - migrate -path migrations -database "{{.DB_URL}}" force 1
-    silent: true      
+    silent: true
 
   migrate_up:
     cmds:
@@ -54,12 +54,12 @@ tasks:
   migrate_down:
     cmds:
       - migrate -path migrations -database "{{.DB_URL}}" -verbose down
-    silent: true      
+    silent: true
 
   db_seed:
     cmds:
       - echo "TODO"
 
-  swag:
+  swagger:
     cmds:
       - swag init -g {{.CMD}}

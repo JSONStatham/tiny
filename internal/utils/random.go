@@ -1,8 +1,6 @@
 package random
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 )
@@ -18,13 +16,4 @@ func RandomString(size int) string {
 	}
 
 	return string(bs)
-}
-
-var ErrDivideByZero = errors.New("divide by zero")
-
-func Divide(a, b int) (int, error) {
-	if b == 0 {
-		return 0, fmt.Errorf("boo: %w", ErrDivideByZero)
-	}
-	return a / b, nil
 }

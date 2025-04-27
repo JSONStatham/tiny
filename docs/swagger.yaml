@@ -36,6 +36,18 @@ definitions:
       message:
         type: string
     type: object
+  urlhandler.UrlList:
+    properties:
+      urls:
+        description: |-
+          TotalCount uint64        `json:"total_count"`
+          TotalPages uint64        `json:"total_pages"`
+          Page       uint64        `json:"page"`
+          Size       uint64        `json:"size"`
+        items:
+          $ref: '#/definitions/models.URL'
+        type: array
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -155,6 +167,25 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Get URL
+      tags:
+      - URL
+  /url/all:
+    get:
+      consumes:
+      - application/json
+      description: get urls
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/urlhandler.UrlList'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get All URLs
       tags:
       - URL
 securityDefinitions:

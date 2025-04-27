@@ -3,12 +3,12 @@ env: "local"
 debug: true
 alias_length: 6
 http_server:
-  address: "0.0.0.0:80"
+  address: "localhost:8080"
   timeout: 4s
   idle_timeout: 30s
 db:
   host: ${DB_HOST}
   port: ${DB_PORT}
-  user: ${DB_USERNAME}
+  user: ${DB_USER}
   password: ${DB_PASSWORD}
   name: ${DB_DATABASE}
