@@ -33,6 +33,10 @@ type UrlList struct {
 	Urls       []*models.URL `json:"urls"`
 }
 
+type Response struct {
+	Message any `json:"message"`
+}
+
 // SaveURL godoc
 // @Summary      Save URL
 // @Tags         URL
@@ -40,9 +44,9 @@ type UrlList struct {
 // @Produce      json
 // @Param        body body Request true "URL"
 // @Success      200  {object}  Response
-// @Failure		 400  {object}  response.ErrorResponse
-// @Failure		 404  {object}  response.ErrorResponse
-// @Failure		 500  {object}  response.ErrorResponse
+// @Failure		 400  {object}  Response
+// @Failure		 404  {object}  Response
+// @Failure		 500  {object}  Response
 // @Router       /url [post]
 func (h Handler) SaveURL(c echo.Context) error {
 	var req *Request
@@ -55,7 +59,7 @@ func (h Handler) SaveURL(c echo.Context) error {
 	h.logger.Info("request body decoded", "request", req)
 
 	if errs := validateWithTrans(req); errs != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, errs)
+		return echo.NewHTTPError(http.StatusBadRequest, Response{errs})
 	}
 
 	alias := req.Alias
@@ -65,13 +69,13 @@ func (h Handler) SaveURL(c echo.Context) error {
 
 	if err := h.storage.SaveURL(req.URL, alias); err != nil {
 		if errors.Is(err, storage.ErrURLExists) {
-			return echo.NewHTTPError(http.StatusBadRequest, "This URL already exists")
+			return echo.NewHTTPError(http.StatusBadRequest, Response{"This URL already exists"})
 		}
 
-		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to add URL")
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to add URL"})
 	}
 
-	return c.JSON(http.StatusCreated, echo.Map{"mesage": alias})
+	return c.JSON(http.StatusCreated, Response{alias})
 }
 
 // RedirectToURL godoc
@@ -81,14 +85,14 @@ func (h Handler) SaveURL(c echo.Context) error {
 // @Produce      json
 // @Param        alias path string true "Alias of the URL"
 // @Success      200  {string}  string "Found"
-// @Failure		 400  {object}  response.ErrorResponse
-// @Failure		 404  {object}  response.ErrorResponse
-// @Failure		 500  {object}  response.ErrorResponse
+// @Failure		 400  {object}  Response
+// @Failure		 404  {object}  Response
+// @Failure		 500  {object}  Response
 // @Router       /{alias} [get]
 func (h Handler) RedirectToURL(c echo.Context) error {
 	alias := c.Param("alias")
 	if strings.TrimSpace(alias) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Alias cannot be empty")
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Alias cannot be empty"})
 	}
 
 	url, err := h.storage.GetURL(alias)
@@ -109,10 +113,9 @@ func (h Handler) RedirectToURL(c echo.Context) error {
 // @Accept       json
 // @Produce      json
 // @Success      200  {object}  UrlList
-// @Failure		 400  {object}  response.ErrorResponse
+// @Failure		 400  {object}  Response
 // @Router       /url/all [get]
 func (h Handler) GetAllUrls(c echo.Context) error {
-
 	urls, err := h.storage.FetchAll(context.Background())
 	if err != nil {
 		if errors.Is(err, storage.ErrURLNotFound) {
@@ -120,7 +123,7 @@ func (h Handler) GetAllUrls(c echo.Context) error {
 		}
 
 		h.logger.Error("error getting url from db", "error", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get url")
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get url"})
 	}
 
 	return c.JSON(http.StatusOK, urls)
@@ -134,12 +137,12 @@ func (h Handler) GetAllUrls(c echo.Context) error {
 // @Produce      json
 // @Param        alias path string true "Alias of the URL"
 // @Success      200  {object}  models.URL
-// @Failure		 400  {object}  response.ErrorResponse
+// @Failure		 400  {object}  Response
 // @Router       /url/{alias} [get]
 func (h Handler) GetURL(c echo.Context) error {
 	alias := c.Param("alias")
 	if strings.TrimSpace(alias) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Alias cannot be empty")
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Alias cannot be empty"})
 	}
 
 	url, err := h.storage.GetURL(alias)
@@ -149,7 +152,7 @@ func (h Handler) GetURL(c echo.Context) error {
 		}
 
 		h.logger.Error("error getting url from db", "error", err)
-		return echo.NewHTTPError(http.StatusNotFound, "Failed to get url")
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get url"})
 	}
 
 	return c.JSON(http.StatusOK, url)
@@ -163,12 +166,12 @@ func (h Handler) GetURL(c echo.Context) error {
 // @Produce      json
 // @Param        alias path string true "Alias of the URL"
 // @Success      200  {object}  models.URL
-// @Failure		 400  {object}  response.ErrorResponse
+// @Failure		 400  {object}  Response
 // @Router       /url/{alias} [delete]
 func (h Handler) DeleteURL(c echo.Context) error {
 	alias := c.Param("alias")
 	if strings.TrimSpace(alias) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Alias cannot be empty")
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Alias cannot be empty"})
 	}
 
 	err := h.storage.DeleteURL(alias)
@@ -177,7 +180,7 @@ func (h Handler) DeleteURL(c echo.Context) error {
 			return echo.ErrNotFound
 		}
 
-		return echo.NewHTTPError(http.StatusBadRequest, "Url could not be deleted")
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Url could not be deleted"})
 	}
 
 	return c.NoContent(http.StatusNoContent)

@@ -34,7 +34,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/urlhandler.Request"
+                            "$ref": "#/definitions/handlers.Request"
                         }
                     }
                 ],
@@ -42,25 +42,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/urlhandler.Response"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     }
                 }
@@ -83,13 +83,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/urlhandler.UrlList"
+                            "$ref": "#/definitions/handlers.UrlList"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     }
                 }
@@ -127,7 +127,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     }
                 }
@@ -163,7 +163,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     }
                 }
@@ -200,19 +200,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
+                            "$ref": "#/definitions/handlers.Response"
                         }
                     }
                 }
@@ -220,6 +220,49 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.Request": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "alias": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.Response": {
+            "type": "object",
+            "properties": {
+                "message": {}
+            }
+        },
+        "handlers.UrlList": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.URL"
+                    }
+                }
+            }
+        },
         "models.URL": {
             "type": "object",
             "properties": {
@@ -236,74 +279,18 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "response.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "urlhandler.Request": {
-            "type": "object",
-            "required": [
-                "url"
-            ],
-            "properties": {
-                "alias": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "urlhandler.Response": {
-            "type": "object",
-            "properties": {
-                "alias": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "urlhandler.UrlList": {
-            "type": "object",
-            "properties": {
-                "urls": {
-                    "description": "TotalCount uint64        ` + "`" + `json:\"total_count\"` + "`" + `\nTotalPages uint64        ` + "`" + `json:\"total_pages\"` + "`" + `\nPage       uint64        ` + "`" + `json:\"page\"` + "`" + `\nSize       uint64        ` + "`" + `json:\"size\"` + "`" + `",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.URL"
-                    }
-                }
-            }
-        }
-    },
-    "securityDefinitions": {
-        "BasicAuth": {
-            "type": "basic"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/",
+	Version:          "",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "Tiny URL API",
-	Description:      "This is a sample server celler server.",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

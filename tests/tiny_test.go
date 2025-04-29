@@ -5,10 +5,9 @@ import (
 	"net/url"
 	"testing"
 	"tiny/internal/config"
-	urlhandler "tiny/internal/http-server/handlers"
+	"tiny/internal/handlers"
 	"tiny/internal/storage/postgres"
 	random "tiny/internal/utils"
-	slogdiscard "tiny/internal/utils/logger/handlers"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/gavv/httpexpect/v2"
@@ -86,7 +85,7 @@ func TestTiny_HappyPath(t *testing.T) {
 	alias := random.RandomString(10)
 	// Create new url
 	e.POST("/url").
-		WithJSON(urlhandler.Request{
+		WithJSON(handlers.Request{
 			URL:   gofakeit.URL(),
 			Alias: alias,
 		}).
@@ -97,7 +96,7 @@ func TestTiny_HappyPath(t *testing.T) {
 		ContainsKey("alias")
 
 	// Ensures url exists in db
-	storage, err := postgres.New(cfg, slogdiscard.NewDiscardLogger())
+	storage, err := postgres.New(&cfg)
 	if err != nil {
 		require.Error(t, err)
 	}

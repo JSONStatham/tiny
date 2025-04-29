@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -38,13 +37,6 @@ const (
 	flagConfigPathName = "config"
 	envConfigPathName  = "CONFIG_PATH"
 )
-
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		panic("Error loading .env file")
-	}
-}
 
 func MustLoad() *Config {
 	cfgPath := fetchConfigPath()
