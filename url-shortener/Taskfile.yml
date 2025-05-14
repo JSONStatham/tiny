@@ -1,0 +1,62 @@
+version: "3"
+
+vars:
+  DB_URL: "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable"
+  CMD: "cmd/url-shortener/main.go"
+
+dotenv: [".env", "{{.ENV}}/.env", "{{.HOME}}/.env"]
+
+tasks:
+  build:
+    cmds:
+      - go build -o bin/url-shortener ./{{.CMD}}
+
+  up:
+    preconditions:
+      - test -f docker-compose.yml
+    cmds:
+      - docker compose up -d
+
+  down:
+    cmds:
+      - docker compose down
+
+  build-docker:
+    cmds:
+      - docker compose up -d --build
+
+  restart:
+    cmds:
+      - docker compose restart
+
+  down-volumes:
+    cmds:
+      - docker compose down --volumes
+
+  migrate-version:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" version
+    silent: true
+
+  migrate-reset:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" force 1
+    silent: true
+
+  migrate-up:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" -verbose up
+    silent: true
+
+  migrate-down:
+    cmds:
+      - migrate -path migrations -database "{{.DB_URL}}" -verbose down
+    silent: true
+
+  db-seed:
+    cmds:
+      - echo "TODO"
+
+  swagger:
+    cmds:
+      - swag init --output ./api -g {{.CMD}}
