@@ -19,7 +19,6 @@ const (
 	eventDeleted = "deleted"
 )
 
-//go:generate mockery --name=URLRepository --output=mocks --case=underscore
 type URLRepository interface {
 	SaveURL(ctx context.Context, urlToSave, short_url string) error
 	GetURL(ctx context.Context, short_url string) (*models.URL, error)
@@ -27,7 +26,6 @@ type URLRepository interface {
 	DeleteURL(ctx context.Context, short_url string) error
 }
 
-//go:generate mockery --name=CacheRepository --output=mocks --case=underscore
 type CacheRepository interface {
 	Get(ctx context.Context, key string, target any) error
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error

@@ -1,12 +1,13 @@
 package tests
 
 import (
+	"context"
 	"database/sql"
 	"net/url"
 	"testing"
 	"urlshortener/internal/config"
-	"urlshortener/internal/handlers"
 	"urlshortener/internal/repository/postgres"
+	httpserver "urlshortener/internal/transport/http"
 	random "urlshortener/internal/utils"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -85,8 +86,8 @@ func TestTiny_HappyPath(t *testing.T) {
 	alias := random.RandomString(10)
 	// Create new url
 	e.POST("/url").
-		WithJSON(handlers.Request{
-			ShortURL: gofakeit.URL(),
+		WithJSON(httpserver.Request{
+			URL:      gofakeit.URL(),
 			ShortURL: alias,
 		}).
 		WithBasicAuth("user", "root").
@@ -101,7 +102,7 @@ func TestTiny_HappyPath(t *testing.T) {
 		require.Error(t, err)
 	}
 
-	url, err := repository.GetURL(alias)
+	url, err := repository.GetURL(context.Background(), alias)
 	require.Error(t, err)
 
 	assert.NotNil(t, url)

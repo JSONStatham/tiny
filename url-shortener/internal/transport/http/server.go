@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"urlshortener/internal/config"
-	"urlshortener/internal/services/url"
 	"urlshortener/internal/services/userinfo"
 
 	"github.com/labstack/echo/v4"
@@ -14,12 +13,12 @@ import (
 type server struct {
 	cfg        *config.Config
 	logger     *slog.Logger
-	urlService *url.URLService
+	urlService URLService
 	userInfo   *userinfo.Service
 	srv        *http.Server
 }
 
-func New(cfg *config.Config, l *slog.Logger, us *url.URLService) server {
+func New(cfg *config.Config, l *slog.Logger, us URLService) server {
 	e := echo.New()
 	s := &http.Server{
 		Addr:         cfg.HttpServer.Address,

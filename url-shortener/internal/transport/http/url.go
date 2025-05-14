@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -28,6 +29,15 @@ type UrlList struct {
 	Urls       []*models.URL `json:"urls"`
 }
 
+//go:generate mockery --name=URLService --output=mocks --case=underscore
+type URLService interface {
+	SaveURL(ctx context.Context, original_url, short_url string) error
+	GetURL(ctx context.Context, short_url string) (*models.URL, error)
+	GetAll(ctx context.Context) ([]*models.URL, error)
+	Visit(ctx context.Context, url *models.URL, r *http.Request) error
+	DeleteURL(ctx context.Context, short_url string) error
+}
+
 // SaveURL godoc
 // @Summary      Save URL
 // @Tags         URL
@@ -39,7 +49,7 @@ type UrlList struct {
 // @Failure		 404  {object}  Response
 // @Failure		 500  {object}  Response
 // @Router       /url [post]
-func (s server) handleURLSave(c echo.Context) error {
+func (s server) HandleURLSave(c echo.Context) error {
 	var req *Request
 
 	if err := c.Bind(&req); err != nil {
@@ -81,17 +91,17 @@ func (s server) handleURLSave(c echo.Context) error {
 // @Failure      404  {object}  Response
 // @Failure      500  {object}  Response
 // @Router       /{short_url} [get]
-func (s server) handleURLRedirect(c echo.Context) error {
+func (s server) HandleURLRedirect(c echo.Context) error {
 	short_url := c.Param("short_url")
 	if strings.TrimSpace(short_url) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short url cannot be empty"})
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short URL cannot be empty"})
 	}
 
 	ctx := c.Request().Context()
 	url, err := s.urlService.GetURL(ctx, short_url)
 	if err != nil {
 		if errors.Is(err, repository.ErrURLNotFound) {
-			return echo.ErrNotFound
+			return echo.NewHTTPError(http.StatusNotFound, Response{"URL not found"})
 		}
 
 		return echo.ErrInternalServerError
@@ -111,15 +121,15 @@ func (s server) handleURLRedirect(c echo.Context) error {
 // @Success      200  {object}  UrlList
 // @Failure		 400  {object}  Response
 // @Router       /url/all [get]
-func (s server) handleURLGetAll(c echo.Context) error {
+func (s server) HandleURLGetAll(c echo.Context) error {
 	ctx := c.Request().Context()
 	urls, err := s.urlService.GetAll(ctx)
 	if err != nil {
 		if errors.Is(err, repository.ErrURLNotFound) {
-			return echo.ErrNotFound
+			return echo.NewHTTPError(http.StatusNotFound, Response{"URL not found"})
 		}
 
-		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get url"})
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get URL"})
 	}
 
 	return c.JSON(http.StatusOK, urls)
@@ -135,20 +145,20 @@ func (s server) handleURLGetAll(c echo.Context) error {
 // @Success      200  {object}  models.URL
 // @Failure		 400  {object}  Response
 // @Router       /url/{short_url} [get]
-func (s server) handleURLGet(c echo.Context) error {
+func (s server) HandleURLGet(c echo.Context) error {
 	short_url := c.Param("short_url")
 	if strings.TrimSpace(short_url) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short url cannot be empty"})
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short URL cannot be empty"})
 	}
 
 	ctx := c.Request().Context()
 	url, err := s.urlService.GetURL(ctx, short_url)
 	if err != nil {
 		if errors.Is(err, repository.ErrURLNotFound) {
-			return echo.ErrNotFound
+			return echo.NewHTTPError(http.StatusNotFound, Response{"URL not found"})
 		}
 
-		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get url"})
+		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Failed to get URL"})
 	}
 
 	return c.JSON(http.StatusOK, url)
@@ -164,17 +174,17 @@ func (s server) handleURLGet(c echo.Context) error {
 // @Success      200  {object}  models.URL
 // @Failure		 400  {object}  Response
 // @Router       /url/{short_url} [delete]
-func (s server) handleURLDelete(c echo.Context) error {
+func (s server) HandleURLDelete(c echo.Context) error {
 	short_url := c.Param("short_url")
 	if strings.TrimSpace(short_url) == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short url cannot be empty"})
+		return echo.NewHTTPError(http.StatusBadRequest, Response{"Short URL cannot be empty"})
 	}
 
 	ctx := c.Request().Context()
 	err := s.urlService.DeleteURL(ctx, short_url)
 	if err != nil {
 		if errors.Is(err, repository.ErrURLNotFound) {
-			return echo.ErrNotFound
+			return echo.NewHTTPError(http.StatusNotFound, Response{"URL not found"})
 		}
 
 		return echo.NewHTTPError(http.StatusInternalServerError, Response{"Url could not be deleted"})

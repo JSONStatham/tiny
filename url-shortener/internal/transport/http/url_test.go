@@ -2,6 +2,7 @@ package httpserver_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,14 +11,15 @@ import (
 	"testing"
 	"time"
 	"urlshortener/internal/config"
-	"urlshortener/internal/handlers"
-	"urlshortener/internal/handlers/mocks"
 	"urlshortener/internal/models"
 	"urlshortener/internal/repository"
+	httpserver "urlshortener/internal/transport/http"
+	"urlshortener/internal/transport/http/mocks"
 	slogdiscard "urlshortener/internal/utils/logger/handlers"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +28,7 @@ func TestSaveURL(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		url, alias     string
+		url, shortUrl  string
 		expectedCode   int
 		expectedErrMsg string
 		mockError      error
@@ -36,19 +38,19 @@ func TestSaveURL(t *testing.T) {
 		{
 			name:         "Success with alias",
 			url:          "http://example.com",
-			alias:        "test_alias",
+			shortUrl:     "test_alias",
 			expectedCode: http.StatusCreated,
 		},
 		{
 			name:         "Success with empty alias",
 			url:          "http://example.com",
-			alias:        "",
+			shortUrl:     "",
 			expectedCode: http.StatusCreated,
 		},
 		{
 			name:           "Empty url",
 			url:            "",
-			alias:          "test_alias",
+			shortUrl:       "test_alias",
 			expectedCode:   http.StatusBadRequest,
 			expectedErrMsg: "Invalid URL",
 			wantErr:        true,
@@ -56,15 +58,15 @@ func TestSaveURL(t *testing.T) {
 		{
 			name:           "Invalid URL",
 			url:            "some invalid URL",
-			alias:          "some_alias",
+			shortUrl:       "some_alias",
 			expectedCode:   http.StatusBadRequest,
 			expectedErrMsg: "Invalid URL",
 			wantErr:        true,
 		},
 		{
 			name:           "SaveURL Error",
-			alias:          "test_alias",
-			url:            "https://google.com",
+			shortUrl:       "test_alias",
+			url:            "http://example.com",
 			expectedErrMsg: "Failed to add URL",
 			expectedCode:   http.StatusInternalServerError,
 			mockError:      errors.New("unexpected error"),
@@ -80,15 +82,15 @@ func TestSaveURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := mocks.NewURLRepository(t)
+			mockSvc := mocks.NewURLService(t)
 
 			if tt.expectedErrMsg == "" || tt.mockError != nil {
-				mockRepo.On("SaveURL", tt.url, tt.alias).
+				mockSvc.On("SaveURL", context.Background(), tt.url, tt.shortUrl).
 					Return(tt.mockError).
 					Once()
 			}
 
-			input := fmt.Sprintf(`{"url": "%s", "alias": "%s"}`, tt.url, tt.alias)
+			input := fmt.Sprintf(`{"url": "%s", "short_url": "%s"}`, tt.url, tt.shortUrl)
 			if len(tt.requestBody) != 0 {
 				input = string(tt.requestBody)
 			}
@@ -99,8 +101,8 @@ func TestSaveURL(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			c := e.NewContext(req, rec)
-			h := handlers.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockRepo)
-			err := h.SaveURL(c)
+			s := httpserver.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockSvc)
+			err := s.HandleURLSave(c)
 
 			if tt.wantErr {
 				var he *echo.HTTPError
@@ -118,12 +120,93 @@ func TestSaveURL(t *testing.T) {
 	}
 }
 
+func TestURLRedirect(t *testing.T) {
+	cases := []struct {
+		name           string
+		shortUrl       string
+		expectedUrl    string
+		mockReturn     *models.URL
+		mockError      error
+		expectedCode   int
+		expectedErrMsg string
+		wantErr        bool
+	}{
+		{
+			name:        "Success",
+			shortUrl:    "test_alias",
+			expectedUrl: "http://example.com",
+			mockReturn: &models.URL{
+				ID:          1,
+				OriginalURL: "http://example.com",
+				ShortURL:    "test_alias",
+				CreatedAt:   time.Now(),
+			},
+			expectedCode: http.StatusFound,
+		},
+		{
+			name:           "Empty alias",
+			shortUrl:       "",
+			mockReturn:     nil,
+			expectedCode:   http.StatusBadRequest,
+			expectedErrMsg: "Short URL cannot be empty",
+			wantErr:        true,
+		},
+		{
+			name:           "URL not found",
+			shortUrl:       "missing_url",
+			mockReturn:     nil,
+			mockError:      repository.ErrURLNotFound,
+			expectedCode:   http.StatusNotFound,
+			expectedErrMsg: "URL not found",
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := mocks.NewURLService(t)
+
+			if tt.expectedErrMsg == "" || tt.mockError != nil {
+				mockSvc.On("GetURL", mock.Anything, tt.shortUrl).
+					Return(tt.mockReturn, tt.mockError).
+					Once()
+
+				if !tt.wantErr {
+					mockSvc.On("Visit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				}
+			}
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+
+			c := e.NewContext(req, rec)
+			c.SetParamNames("short_url")
+			c.SetParamValues(tt.shortUrl)
+
+			s := httpserver.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockSvc)
+			err := s.HandleURLRedirect(c)
+			if tt.wantErr {
+				respErr, ok := err.(*echo.HTTPError)
+				assert.True(t, ok)
+				assert.Equal(t, tt.expectedCode, respErr.Code)
+				assert.Equal(t, tt.expectedErrMsg, respErr.Message.(httpserver.Response).Message)
+				return
+			}
+
+			assert.Equal(t, tt.expectedCode, rec.Code)
+			assert.Equal(t, tt.expectedUrl, rec.Header().Get("Location"))
+		})
+	}
+}
+
 func TestGetURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name         string
-		alias        string
+		shortUrl     string
 		mockReturn   *models.URL
 		mockError    error
 		expectedCode int
@@ -131,8 +214,8 @@ func TestGetURL(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:  "Success - URL found",
-			alias: "test_alias",
+			name:     "Success - URL found",
+			shortUrl: "test_alias",
 			mockReturn: &models.URL{
 				ID:          1,
 				OriginalURL: "http://example.com",
@@ -143,7 +226,7 @@ func TestGetURL(t *testing.T) {
 		},
 		{
 			name:         "Not Found - URL does not exist",
-			alias:        "missing_alias",
+			shortUrl:     "missing_alias",
 			mockReturn:   nil,
 			mockError:    repository.ErrURLNotFound,
 			expectedCode: http.StatusNotFound,
@@ -152,7 +235,7 @@ func TestGetURL(t *testing.T) {
 		},
 		{
 			name:         "Internal Error - Unexpected error",
-			alias:        "error_alias",
+			shortUrl:     "error_alias",
 			mockReturn:   nil,
 			mockError:    errors.New("database error"),
 			expectedCode: http.StatusInternalServerError,
@@ -161,20 +244,20 @@ func TestGetURL(t *testing.T) {
 		},
 		{
 			name:         "Empty alias",
-			alias:        "",
+			shortUrl:     "",
 			mockReturn:   nil,
 			expectedCode: http.StatusBadRequest,
-			expectedResp: `{"message":"Alias cannot be empty"}`,
+			expectedResp: `{"message":"Url cannot be empty"}`,
 			wantErr:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := mocks.NewURLRepository(t)
+			mockSvc := mocks.NewURLService(t)
 
-			if tt.alias != "" {
-				mockRepo.On("GetURL", tt.alias).
+			if tt.shortUrl != "" {
+				mockSvc.On("GetURL", mock.Anything, tt.shortUrl).
 					Return(tt.mockReturn, tt.mockError).
 					Once()
 			}
@@ -185,12 +268,12 @@ func TestGetURL(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			c := e.NewContext(req, rec)
-			c.SetParamNames("alias")
-			c.SetParamValues(tt.alias)
+			c.SetParamNames("short_url")
+			c.SetParamValues(tt.shortUrl)
 
-			h := handlers.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockRepo)
+			s := httpserver.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockSvc)
 
-			err := h.GetURL(c)
+			err := s.HandleURLGet(c)
 			if tt.wantErr {
 				var he *echo.HTTPError
 				errors.As(err, &he)
@@ -211,8 +294,8 @@ func TestGetURL(t *testing.T) {
 				}
 
 				assert.Equal(t, tt.mockReturn.ID, resp["id"])
-				assert.Equal(t, tt.mockReturn.OriginalURL, resp["url"])
-				assert.Equal(t, tt.mockReturn.ShortURL, resp["alias"])
+				assert.Equal(t, tt.mockReturn.OriginalURL, resp["original_url"])
+				assert.Equal(t, tt.mockReturn.ShortURL, resp["short_url"])
 
 				// Validate CreatedAt separately
 				parsedTime, err := time.Parse(time.RFC3339Nano, resp["created_at"].(string))
@@ -232,44 +315,44 @@ func TestDeleteURL(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		alias          string
+		shortUrl       string
 		mockError      error
 		expectedCode   int
 		expectedErrMsg string
 	}{
 		{
 			name:         "Success URL deleted",
-			alias:        "test_alias",
+			shortUrl:     "test_alias",
 			expectedCode: http.StatusNoContent,
 		},
 		{
 			name:           "URL does not exist",
-			alias:          "missing_alias",
+			shortUrl:       "missing_alias",
 			mockError:      repository.ErrURLNotFound,
 			expectedCode:   http.StatusNotFound,
-			expectedErrMsg: "Not Found",
+			expectedErrMsg: "URL not found",
 		},
 		{
 			name:           "Unexpected error from db",
-			alias:          "error_alias",
+			shortUrl:       "error_alias",
 			mockError:      errors.New("database error"),
 			expectedCode:   http.StatusInternalServerError,
 			expectedErrMsg: "Url could not be deleted",
 		},
 		{
 			name:           "Empty path alias",
-			alias:          "",
+			shortUrl:       "",
 			expectedCode:   http.StatusBadRequest,
-			expectedErrMsg: "Alias cannot be empty",
+			expectedErrMsg: "Short url cannot be empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := mocks.NewURLRepository(t)
+			mockSvc := mocks.NewURLService(t)
 
-			if tt.alias != "" {
-				mockRepo.On("DeleteURL", tt.alias).
+			if tt.shortUrl != "" {
+				mockSvc.On("DeleteURL", mock.Anything, tt.shortUrl).
 					Return(tt.mockError).
 					Once()
 			}
@@ -279,18 +362,18 @@ func TestDeleteURL(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			c := e.NewContext(req, rec)
-			c.SetParamNames("alias")
-			c.SetParamValues(tt.alias)
+			c.SetParamNames("short_url")
+			c.SetParamValues(tt.shortUrl)
 
-			h := handlers.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockRepo)
+			s := httpserver.New(&config.Config{}, slogdiscard.NewDiscardLogger(), mockSvc)
 
-			err := h.DeleteURL(c)
+			err := s.HandleURLDelete(c)
 
 			if err != nil {
-				he, ok := err.(*echo.HTTPError)
+				sErr, ok := err.(*echo.HTTPError)
 				assert.True(t, ok)
-				assert.Equal(t, tt.expectedCode, he.Code)
-				assert.Equal(t, tt.expectedErrMsg, he.Message)
+				assert.Equal(t, tt.expectedCode, sErr.Code)
+				assert.Equal(t, tt.expectedErrMsg, sErr.Message.(httpserver.Response).Message)
 			} else {
 				assert.Empty(t, rec.Body.String())
 				assert.Equal(t, tt.expectedCode, rec.Code)

@@ -53,9 +53,9 @@ func (s server) registerRoutes(e *echo.Echo) {
 	e.GET("/up", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
-	e.POST("/url", s.handleURLSave)
-	e.GET("/:short_url", s.handleURLRedirect)
-	e.GET("/url/:short_url", s.handleURLGet)
-	e.GET("/url/all", s.handleURLGetAll)
-	e.DELETE("/url/:short_url", s.handleURLDelete)
+	e.POST("/url", s.HandleURLSave)
+	e.GET("/:short_url", s.HandleURLRedirect)
+	e.GET("/url/:short_url", s.HandleURLGet)
+	e.GET("/url/all", s.HandleURLGetAll)
+	e.DELETE("/url/:short_url", s.HandleURLDelete)
 }
